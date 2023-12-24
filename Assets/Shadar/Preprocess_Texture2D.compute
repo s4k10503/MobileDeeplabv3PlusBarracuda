@@ -1,0 +1,29 @@
+// Preprocess
+#pragma kernel Preprocess_Texture2D
+
+Texture2D<float4> InputTexture;
+RWStructuredBuffer<float> OutputTensor;
+uint Size;
+
+[numthreads(16, 16, 1)]
+void Preprocess_Texture2D(uint3 id : SV_DispatchThreadID)
+{
+    uint textureWidth, textureHeight;
+    InputTexture.GetDimensions(textureWidth, textureHeight);
+    
+    int tx = id.x * textureWidth / Size;
+    int ty = id.y * textureHeight / Size;
+    float4 color = InputTexture[float2(ty, tx)];
+
+    // Normalize color from [0, 1] to [-1, 1]
+    float4 normalizedColor = color * 2.0 - 1.0;
+
+    // Index: (batch number * height * width * number of channels) + 
+    //        (y coordinate * width * number of channels) + 
+    //        (x coordinate * number of channels) + 
+    //        channels
+    uint tensorIndex = id.y * Size * 3 + id.x * 3;
+    OutputTensor[tensorIndex] = normalizedColor.r;
+    OutputTensor[tensorIndex + 1] = normalizedColor.g;
+    OutputTensor[tensorIndex + 2] = normalizedColor.b;
+}
